@@ -1,4 +1,9 @@
-const API_BASE = '/api';
+// --- UPDATED FOR PRODUCTION ---
+const API_BASE = 'https://pg-management-j9ai.onrender.com/api';
+
+// For local development in the future, you can swap it back to:
+// const API_BASE = 'http://localhost:8080/api';
+// ------------------------------
 
 // --- State Management ---
 let token = localStorage.getItem('jwt_token');
@@ -479,67 +484,10 @@ async function loadCustomers() {
         renderCustomersTable();
         document.getElementById('page-indicator').innerText = `Page ${currentPage + 1}`;
         document.getElementById('prev-page').disabled = currentPage === 0;
-        // Simple logic for next page: if we got a full page, enable next.
         document.getElementById('next-page').disabled = customersList.length < pageSize;
         
     } catch (e) {
         // Error handled in fetchWithAuth
-    }
-}
-
-function renderCustomersTable() {
-    const tbody = document.getElementById('customers-tbody');
-    tbody.innerHTML = '';
-    
-    customersList.forEach(cust => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><input type="checkbox" class="row-checkbox" data-id="${cust.id}"></td>
-            <td>${cust.id}</td>
-            <td><input type="text" class="inline-edit" data-id="${cust.id}" data-field="name" value="${cust.name || ''}"></td>
-            <td><input type="text" class="inline-edit" data-id="${cust.id}" data-field="phoneNo" value="${cust.phoneNo || ''}"></td>
-            <td>${cust.joinDate || ''}</td>
-            <td>
-                <select class="inline-edit" data-id="${cust.id}" data-field="status">
-                    <option value="ACTIVE" ${cust.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
-                    <option value="NOTICE_PERIOD" ${cust.status === 'NOTICE_PERIOD' ? 'selected' : ''}>NOTICE_PERIOD</option>
-                    <option value="INACTIVE" ${cust.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
-                </select>
-            </td>
-            <td>
-                <select class="inline-edit" data-id="${cust.id}" data-field="feeStatus">
-                    <option value="PAID" ${cust.feeStatus === 'PAID' ? 'selected' : ''}>PAID</option>
-                    <option value="PENDING" ${cust.feeStatus === 'PENDING' ? 'selected' : ''}>PENDING</option>
-                </select>
-            </td>
-            <td><input type="number" class="inline-edit" data-id="${cust.id}" data-field="rentFee" value="${cust.rentFee || 0}"></td>
-            <td>
-                <button class="action-btn" title="Edit Full" onclick="openCustomerModal(${cust.id})">✏️</button>
-                <button class="action-btn" title="Message" onclick="openMessageModal(${cust.id})">💬</button>
-                <button class="action-btn" title="Delete" onclick="deleteCustomer(${cust.id})">🗑️</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    attachInlineEditListeners();
-}
-
-async function saveCustomer(formData) {
-    const isEdit = !!formData.id;
-    const url = isEdit ? `/customers/${formData.id}` : `/customers`;
-    const method = isEdit ? 'PUT' : 'POST';
-
-    try {
-        await fetchWithAuth(url, {
-            method,
-            body: JSON.stringify(formData)
-        });
-        showToast('Customer saved successfully', 'Success', 'success');
-        closeModal('customer-modal');
-        loadCustomers();
-    } catch (e) {
-        // handled
     }
 }
 
@@ -550,355 +498,6 @@ async function deleteCustomer(id) {
             showToast('Customer deleted', 'Success', 'success');
             loadCustomers();
         } catch (e) { }
-    }
-}
-
-// --- Event Listeners Setup ---
-
-function setupEventListeners() {
-    
-    // Auth Tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-            
-            e.target.classList.add('active');
-            document.getElementById(e.target.getAttribute('data-target')).classList.add('active');
-        });
-    });
-
-    // Login/Register Forms
-    document.getElementById('login-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        login(document.getElementById('login-username').value, document.getElementById('login-password').value);
-    });
-
-    document.getElementById('register-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        register(document.getElementById('reg-username').value, document.getElementById('reg-password').value);
-    });
-
-    // Navigation
-    document.getElementById('logout-btn').addEventListener('click', logout);
-
-    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            document.querySelectorAll('.sidebar-nav .nav-item').forEach(nav => nav.classList.remove('active'));
-            document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
-            
-            e.currentTarget.classList.add('active');
-            const targetPage = e.currentTarget.getAttribute('data-page');
-            document.getElementById(targetPage).classList.add('active');
-            
-            document.getElementById('page-title').innerText = targetPage === 'customers-page' ? 'Customers' : 'Settings';
-        });
-    });
-
-    // Toolbar (Search, Sort, Pagination)
-    let searchTimeout;
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            currentSearch = e.target.value;
-            currentPage = 0;
-            loadCustomers();
-        }, 500);
-    });
-
-    document.getElementById('sort-by-select').addEventListener('change', (e) => {
-        sortBy = e.target.value;
-        loadCustomers();
-    });
-
-    document.getElementById('sort-as-select').addEventListener('change', (e) => {
-        sortAs = e.target.value;
-        loadCustomers();
-    });
-
-    document.getElementById('prev-page').addEventListener('click', () => {
-        if (currentPage > 0) {
-            currentPage--;
-            loadCustomers();
-        }
-    });
-
-    document.getElementById('next-page').addEventListener('click', () => {
-        currentPage++;
-        loadCustomers();
-    });
-
-    // Action Buttons
-    document.getElementById('update-pending-btn').addEventListener('click', async () => {
-        try {
-            await fetchWithAuth('/customers/rent-pending');
-            showToast('Pending status updated', 'Success', 'success');
-            loadCustomers();
-        } catch (e) { }
-    });
-
-    document.getElementById('trigger-alert-btn').addEventListener('click', async () => {
-        try {
-            await fetchWithAuth(`/alert/${alertDaysSetting}`);
-            showToast(`Alerts sent for ${alertDaysSetting} days before`, 'Success', 'success');
-        } catch (e) { }
-    });
-
-    document.getElementById('message-all-btn').addEventListener('click', () => {
-        const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => parseInt(cb.getAttribute('data-id')));
-        if (selectedIds.length === 0) {
-            showToast('Please select at least one customer', 'Warning', 'warning');
-            return;
-        }
-        document.getElementById('message-form').reset();
-        document.getElementById('message-customer-id').value = selectedIds.join(',');
-        document.getElementById('message-modal').classList.add('active');
-    });
-
-    document.getElementById('select-all-checkbox').addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = isChecked);
-    });
-
-    // Modals
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
-        });
-    });
-
-    document.getElementById('add-customer-btn').addEventListener('click', () => {
-        document.getElementById('customer-form').reset();
-        document.getElementById('customer-id').value = '';
-        document.getElementById('customer-modal-title').innerText = 'Add Customer';
-        document.getElementById('accessories-list').innerHTML = '';
-        document.getElementById('customer-modal').classList.add('active');
-    });
-
-    // Accessory management
-    document.getElementById('add-accessory-btn').addEventListener('click', () => {
-        const list = document.getElementById('accessories-list');
-        const index = list.children.length;
-        const div = document.createElement('div');
-        div.className = 'accessory-item';
-        div.innerHTML = `
-            <input type="text" placeholder="Name" class="acc-name" required>
-            <input type="number" step="0.01" placeholder="Price" class="acc-price" required>
-            <button type="button" class="remove-acc-btn" onclick="this.parentElement.remove()">❌</button>
-        `;
-        list.appendChild(div);
-    });
-
-    // Forms Submit
-    document.getElementById('customer-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        // gather accessories
-        const accessories = Array.from(document.querySelectorAll('.accessory-item')).map(item => ({
-            accessoriesName: item.querySelector('.acc-name').value,
-            accessoriesPrice: parseFloat(item.querySelector('.acc-price').value)
-        }));
-
-        const formData = {
-            name: document.getElementById('cust-name').value,
-            phoneNo: document.getElementById('cust-phone').value,
-            joinDate: document.getElementById('cust-join-date').value,
-            leaveDate: document.getElementById('cust-leave-date').value || null,
-            advanceAmount: parseFloat(document.getElementById('cust-advance').value),
-            rentFee: parseFloat(document.getElementById('cust-rent').value),
-            frequencyType: document.getElementById('cust-frequency').value,
-            feeStatus: document.getElementById('cust-fee-status').value,
-            sharing: document.getElementById('cust-sharing').value,
-            status: document.getElementById('cust-status').value,
-            rentedAccessoriesList: accessories
-        };
-
-        const id = document.getElementById('customer-id').value;
-        if (id) formData.id = parseInt(id);
-
-        saveCustomer(formData);
-    });
-
-    document.getElementById('message-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const idsStr = document.getElementById('message-customer-id').value;
-        const content = document.getElementById('msg-content').value;
-        
-        try {
-            if (idsStr.includes(',')) {
-                // mass message (We'll assume the backend /customers/alert accepts a list of CustomerDtos based on our implementation plan, 
-                // wait, the prompt says "i want also a message all function for the selected ones". 
-                // The backend has `POST /api/customers/alert` which takes `List<CustomerDto>`.
-                // Alternatively we can loop and call the single SMS endpoint.
-                // The `POST /api/customers/{id}/sms` takes `MessageDto`. I will loop for simplicity if mass endpoint isn't exactly mapping.
-                
-                const ids = idsStr.split(',');
-                for (const id of ids) {
-                    await fetchWithAuth(`/customers/${id}/sms`, {
-                        method: 'POST',
-                        body: JSON.stringify({ message: content, status: 'SENT' })
-                    });
-                }
-                showToast('Messages sent successfully', 'Success', 'success');
-            } else {
-                // single message
-                await fetchWithAuth(`/customers/${idsStr}/sms`, {
-                    method: 'POST',
-                    body: JSON.stringify({ message: content, status: 'SENT' })
-                });
-                showToast('Message sent successfully', 'Success', 'success');
-            }
-            closeModal('message-modal');
-        } catch (err) { }
-    });
-
-    // Settings
-    document.getElementById('system-settings-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        alertDaysSetting = document.getElementById('alert-days').value;
-        localStorage.setItem('alertDays', alertDaysSetting);
-        showToast('Settings saved', 'Success', 'success');
-    });
-    
-    document.getElementById('change-password-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        // Since there is no actual endpoint provided for this in the controller, mock it.
-        showToast('Password changed successfully (Mocked)', 'Success', 'success');
-        document.getElementById('change-password-form').reset();
-    });
-}
-
-function openCustomerModal(id) {
-    const cust = customersList.find(c => c.id === id);
-    if (!cust) return;
-
-    document.getElementById('customer-id').value = cust.id;
-    document.getElementById('customer-modal-title').innerText = 'Edit Customer';
-    
-    document.getElementById('cust-name').value = cust.name || '';
-    document.getElementById('cust-phone').value = cust.phoneNo || '';
-    document.getElementById('cust-join-date').value = cust.joinDate || '';
-    document.getElementById('cust-leave-date').value = cust.leaveDate || '';
-    document.getElementById('cust-advance').value = cust.advanceAmount || 0;
-    document.getElementById('cust-rent').value = cust.rentFee || 0;
-    document.getElementById('cust-frequency').value = cust.frequencyType || 'MONTH';
-    document.getElementById('cust-fee-status').value = cust.feeStatus || 'PENDING';
-    document.getElementById('cust-sharing').value = cust.sharing || 'SINGLE';
-    document.getElementById('cust-status').value = cust.status || 'ACTIVE';
-
-    const list = document.getElementById('accessories-list');
-    list.innerHTML = '';
-    if (cust.rentedAccessoriesList) {
-        cust.rentedAccessoriesList.forEach(acc => {
-            const div = document.createElement('div');
-            div.className = 'accessory-item';
-            div.innerHTML = `
-                <input type="text" placeholder="Name" class="acc-name" value="${acc.accessoriesName}" required>
-                <input type="number" step="0.01" placeholder="Price" class="acc-price" value="${acc.accessoriesPrice}" required>
-                <button type="button" class="remove-acc-btn" onclick="this.parentElement.remove()">❌</button>
-            `;
-            list.appendChild(div);
-        });
-    }
-
-    document.getElementById('customer-modal').classList.add('active');
-}
-
-function openMessageModal(id) {
-    document.getElementById('message-form').reset();
-    document.getElementById('message-customer-id').value = id;
-    document.getElementById('message-modal').classList.add('active');
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.remove('active');
-}
-
-function renderCustomersTable() {
-    const tbody = document.getElementById('customers-tbody');
-    tbody.innerHTML = '';
-
-    customersList.forEach(cust => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${cust.id}</td>
-            <td><input type="text" class="inline-edit" data-id="${cust.id}" data-field="name" value="${cust.name || ''}"></td>
-            <td><input type="text" class="inline-edit" data-id="${cust.id}" data-field="phoneNo" value="${cust.phoneNo || ''}"></td>
-            <td>${cust.roomNo ?? ''}</td>
-            <td>${cust.joinDate || ''}</td>
-            <td>
-                <select class="inline-edit" data-id="${cust.id}" data-field="status">
-                    <option value="ACTIVE" ${cust.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
-                    <option value="NOTICE_PERIOD" ${cust.status === 'NOTICE_PERIOD' ? 'selected' : ''}>NOTICE_PERIOD</option>
-                    <option value="INACTIVE" ${cust.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
-                </select>
-            </td>
-            <td>
-                <select class="inline-edit" data-id="${cust.id}" data-field="feeStatus">
-                    <option value="PAID" ${cust.feeStatus === 'PAID' ? 'selected' : ''}>PAID</option>
-                    <option value="PENDING" ${cust.feeStatus === 'PENDING' ? 'selected' : ''}>PENDING</option>
-                </select>
-            </td>
-            <td><input type="number" class="inline-edit" data-id="${cust.id}" data-field="rentFee" value="${cust.rentFee || 0}"></td>
-            <td>
-                <div class="actions-menu">
-                    <button class="action-btn action-trigger" type="button" aria-label="Open actions">&#8942;</button>
-                    <div class="actions-dropdown">
-                        <button type="button" class="dropdown-item" onclick="openCustomerModal(${cust.id})">Edit</button>
-                        <button type="button" class="dropdown-item" onclick="openCustomerInfoModal(${cust.id})">Info</button>
-                        <button type="button" class="dropdown-item" onclick="openMessageModal(${cust.id})">Message</button>
-                        <button type="button" class="dropdown-item danger" onclick="deleteCustomer(${cust.id})">Delete</button>
-                    </div>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    attachInlineEditListeners();
-
-    document.querySelectorAll('.action-trigger').forEach(button => {
-        button.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const menu = event.currentTarget.closest('.actions-menu');
-            document.querySelectorAll('.actions-menu.open').forEach(openMenu => {
-                if (openMenu !== menu) {
-                    openMenu.classList.remove('open');
-                }
-            });
-            menu.classList.toggle('open');
-        });
-    });
-}
-
-async function saveCustomer(formData) {
-    const isEdit = !!formData.id;
-    const url = isEdit ? `/customers/${formData.id}` : `/customers`;
-    const method = isEdit ? 'PUT' : 'POST';
-
-    try {
-        if (!roomAvailabilityLoaded) {
-            try {
-                await loadRooms();
-            } catch (error) {
-                // If room lookup fails, let the backend perform the final validation.
-            }
-        }
-
-        if (customerRoomIsAllocated) {
-            showToast('Room allocated', 'Room Error', 'error');
-            return;
-        }
-
-        await fetchWithAuth(url, {
-            method,
-            body: JSON.stringify(formData)
-        });
-        showToast('Customer saved successfully', 'Success', 'success');
-        closeModal('customer-modal');
-        loadCustomers();
-    } catch (e) {
-        // handled
     }
 }
 
@@ -999,6 +598,98 @@ function openRoomModal() {
     document.getElementById('room-form').reset();
     loadRooms();
     document.getElementById('room-modal').classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+function renderCustomersTable() {
+    const tbody = document.getElementById('customers-tbody');
+    tbody.innerHTML = '';
+
+    customersList.forEach(cust => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${cust.id}</td>
+            <td><input type="text" class="inline-edit" data-id="${cust.id}" data-field="name" value="${cust.name || ''}"></td>
+            <td><input type="text" class="inline-edit" data-id="${cust.id}" data-field="phoneNo" value="${cust.phoneNo || ''}"></td>
+            <td>${cust.roomNo ?? ''}</td>
+            <td>${cust.joinDate || ''}</td>
+            <td>
+                <select class="inline-edit" data-id="${cust.id}" data-field="status">
+                    <option value="ACTIVE" ${cust.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
+                    <option value="NOTICE_PERIOD" ${cust.status === 'NOTICE_PERIOD' ? 'selected' : ''}>NOTICE_PERIOD</option>
+                    <option value="INACTIVE" ${cust.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
+                </select>
+            </td>
+            <td>
+                <select class="inline-edit" data-id="${cust.id}" data-field="feeStatus">
+                    <option value="PAID" ${cust.feeStatus === 'PAID' ? 'selected' : ''}>PAID</option>
+                    <option value="PENDING" ${cust.feeStatus === 'PENDING' ? 'selected' : ''}>PENDING</option>
+                </select>
+            </td>
+            <td><input type="number" class="inline-edit" data-id="${cust.id}" data-field="rentFee" value="${cust.rentFee || 0}"></td>
+            <td>
+                <div class="actions-menu">
+                    <button class="action-btn action-trigger" type="button" aria-label="Open actions">&#8942;</button>
+                    <div class="actions-dropdown">
+                        <button type="button" class="dropdown-item" onclick="openCustomerModal(${cust.id})">Edit</button>
+                        <button type="button" class="dropdown-item" onclick="openCustomerInfoModal(${cust.id})">Info</button>
+                        <button type="button" class="dropdown-item" onclick="openMessageModal(${cust.id})">Message</button>
+                        <button type="button" class="dropdown-item danger" onclick="deleteCustomer(${cust.id})">Delete</button>
+                    </div>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    attachInlineEditListeners();
+
+    document.querySelectorAll('.action-trigger').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const menu = event.currentTarget.closest('.actions-menu');
+            document.querySelectorAll('.actions-menu.open').forEach(openMenu => {
+                if (openMenu !== menu) {
+                    openMenu.classList.remove('open');
+                }
+            });
+            menu.classList.toggle('open');
+        });
+    });
+}
+
+async function saveCustomer(formData) {
+    const isEdit = !!formData.id;
+    const url = isEdit ? `/customers/${formData.id}` : `/customers`;
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+        if (!roomAvailabilityLoaded) {
+            try {
+                await loadRooms();
+            } catch (error) {
+                // If room lookup fails, let the backend perform the final validation.
+            }
+        }
+
+        if (customerRoomIsAllocated) {
+            showToast('Room allocated', 'Room Error', 'error');
+            return;
+        }
+
+        await fetchWithAuth(url, {
+            method,
+            body: JSON.stringify(formData)
+        });
+        showToast('Customer saved successfully', 'Success', 'success');
+        closeModal('customer-modal');
+        loadCustomers();
+    } catch (e) {
+        // handled
+    }
 }
 
 function setupEventListeners() {
