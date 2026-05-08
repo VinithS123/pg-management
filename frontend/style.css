@@ -841,7 +841,7 @@ tr:hover {
 }
 
 /* =========================================================
-   Mobile Responsive Adjustments - REWRITTEN FOR NEATNESS
+   Mobile Responsive Adjustments - CORRECTED
    ========================================================= */
 @media (max-width: 768px) {
     .menu-toggle { display: block; }
@@ -877,7 +877,7 @@ tr:hover {
     }
 
     #current-user-name {
-        display: none; /* Hide text username to save space on mobile */
+        display: none; /* Hide text username to save space */
     }
 
     .page-content {
@@ -895,30 +895,49 @@ tr:hover {
         gap: 0.75rem;
     }
 
+    /* Fixed Toolbar & Inputs */
     .toolbar {
+        display: flex;
+        flex-direction: column;
         align-items: stretch;
         gap: 1rem;
     }
 
     .search-sort-group {
+        display: flex;
         flex-direction: column;
         width: 100%;
         gap: 0.5rem;
     }
 
-    /* Neat 2x2 grid for action buttons instead of stacking all 4 vertically */
+    /* Enforce 2x2 Grid for Action Buttons */
     .action-group {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
         width: 100%;
         gap: 0.5rem;
     }
 
-    .search-box input, .custom-select, .btn {
+    /* Only target search, select, and ACTION buttons to be full width */
+    .search-box input,
+    .custom-select,
+    .action-group .btn {
         width: 100%;
+        margin: 0;
     }
 
-    /* Tighter padding on table cells so more data fits */
+    /* Table readability - forces horizontal scroll instead of microscopic text */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0;
+        margin-top: 1rem;
+    }
+
+    table {
+        min-width: 800px; /* Forces table to scroll cleanly */
+    }
+
     th, td {
         padding: 0.75rem 0.5rem;
         font-size: 0.85rem;
@@ -928,12 +947,24 @@ tr:hover {
         min-width: 80px;
     }
 
+    /* Fix Stretched Pagination Buttons */
+    .pagination {
+        justify-content: center;
+        margin-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .pagination .btn {
+        width: 36px !important; /* Force them back to circles */
+        flex-shrink: 0;
+    }
+
     .actions-dropdown {
         left: auto;
         right: 0;
     }
 
-    /* Modals & Popups Margin Fixes */
+    /* Modals & Popups Fixes */
     .modal {
         margin: 1rem;
         width: calc(100% - 2rem);
@@ -944,12 +975,13 @@ tr:hover {
     }
 
     .modal-actions {
-        flex-direction: column-reverse; /* Stack buttons logically */
+        flex-direction: column-reverse;
         gap: 0.5rem;
     }
 
     .modal-actions .btn {
         margin: 0;
+        width: 100%;
     }
 
     .auth-box {
