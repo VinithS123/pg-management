@@ -1,4 +1,9 @@
+// --- UPDATED FOR PRODUCTION ---
 const API_BASE = 'https://pg-management-j9ai.onrender.com/api';
+
+// For local development in the future, you can swap it back to:
+// const API_BASE = 'http://localhost:8080/api';
+// ------------------------------
 
 // --- State Management ---
 let token = localStorage.getItem('jwt_token');
@@ -40,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- Utility Functions ---
 
-function showToast(message, title = 'System Notification', type = 'success') {
+function showToast(message, title = 'Notification', type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -56,7 +61,7 @@ function showToast(message, title = 'System Notification', type = 'success') {
     }, 4000);
 }
 
-function showConfirmationToast(message, title = 'Confirm Action') {
+function showConfirmationToast(message, title = 'Confirm Change') {
     return new Promise((resolve) => {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -81,7 +86,7 @@ function showConfirmationToast(message, title = 'Confirm Action') {
         const confirmButton = document.createElement('button');
         confirmButton.type = 'button';
         confirmButton.className = 'toast-btn primary';
-        confirmButton.textContent = 'Proceed';
+        confirmButton.textContent = 'Save';
 
         const close = (confirmed) => {
             toast.classList.add('hiding');
@@ -98,48 +103,6 @@ function showConfirmationToast(message, title = 'Confirm Action') {
     });
 }
 
-// --- Formalized Error Handling ---
-function handleApiError(error) {
-    console.error('API Context:', error);
-    if (error.status === 401 || error.status === 403) {
-        logout();
-        showToast('Your session has expired. Please log in again securely.', 'Authentication Notice', 'error');
-    } else {
-        // Suppress raw backend exceptions and show formal messages
-        showToast('We encountered an issue processing your request. Please review your input or try again later.', 'System Notice', 'error');
-    }
-}
-
-async function fetchWithAuth(url, options = {}) {
-    if (!token) throw new Error('No valid session token found.');
-
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers
-    };
-
-    try {
-        const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
-
-        if (!response.ok) {
-            throw {
-                status: response.status,
-                // Instead of passing the raw error details, we force handleApiError to catch it.
-                message: 'Internal System Exception'
-            };
-        }
-
-        const text = await response.text();
-        return text ? JSON.parse(text) : {};
-    } catch (error) {
-        handleApiError(error);
-        throw error;
-    }
-}
-
-// --- Rest of functions (Unmodified logical flow, just referencing the UI updates) ---
-
 async function handleInlineCustomerEdit(e) {
     const target = e.target;
     const id = target.getAttribute('data-id');
@@ -147,9 +110,11 @@ async function handleInlineCustomerEdit(e) {
     const value = target.value;
     const previousValue = target.dataset.originalValue ?? '';
 
-    if (value === previousValue) return;
+    if (value === previousValue) {
+        return;
+    }
 
-    const confirmed = await showConfirmationToast('Are you sure you want to save this modification?', 'Confirm Update');
+    const confirmed = await showConfirmationToast('Save this inline edit?', 'Confirm Save');
     if (!confirmed) {
         target.value = previousValue;
         return;
@@ -164,7 +129,7 @@ async function handleInlineCustomerEdit(e) {
             body: JSON.stringify(payload)
         });
         target.dataset.originalValue = value;
-        showToast('Information updated successfully.', 'System Notice', 'success');
+        showToast('Updated successfully', 'Success', 'success');
     } catch (err) {
         target.value = previousValue;
     }
@@ -176,6 +141,52 @@ function attachInlineEditListeners() {
         el.addEventListener('change', handleInlineCustomerEdit);
     });
 }
+
+function handleApiError(error) {
+    console.error('API Error:', error);
+    if (error.status === 401 || error.status === 403) {
+        logout();
+        showToast('Session expired. Please log in again.', 'Error', 'error');
+    } else {
+        showToast(error.message || 'An unexpected error occurred.', error.title || 'Error', 'error');
+    }
+}
+
+async function fetchWithAuth(url, options = {}) {
+    if (!token) throw new Error('No token found');
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+    };
+
+    try {
+        const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {}
+
+            throw {
+                status: response.status,
+                message: errorData.message || errorData.details || 'Request failed',
+                title: errorData.details || 'Error'
+            };
+        }
+
+        // Handle empty responses
+        const text = await response.text();
+        return text ? JSON.parse(text) : {};
+    } catch (error) {
+        handleApiError(error);
+        throw error;
+    }
+}
+
+// --- Authentication ---
 
 function checkAuthState() {
     if (token) {
@@ -207,17 +218,24 @@ function getPageTitle(pageId) {
 
 function setRoomSyncStatus(message, type = '') {
     const status = document.getElementById('rooms-sync-status');
-    if (!status) return;
+    if (!status) {
+        return;
+    }
+
     status.textContent = message;
     status.className = type ? `field-hint ${type}` : 'field-hint';
 }
 
-function getRoomOccupiedBeds(room) { return Number(room?.occupiedBeds ?? 0); }
+function getRoomOccupiedBeds(room) {
+    return Number(room?.occupiedBeds ?? 0);
+}
+
 function getRoomAvailableBeds(room) {
     const totalBeds = Number(room?.noOfBed ?? 0);
     const occupiedBeds = getRoomOccupiedBeds(room);
     return Math.max(totalBeds - occupiedBeds, 0);
 }
+
 function getDerivedRoomStatus(room) {
     return getRoomAvailableBeds(room) > 0 ? 'UNRESERVED' : 'RESERVED';
 }
@@ -225,12 +243,17 @@ function getDerivedRoomStatus(room) {
 async function fetchAllCustomersForRoomLookup() {
     const pageSize = 200;
     const customers = [];
+
     for (let page = 0; page < 50; page++) {
         const batch = await fetchWithAuth(`/customers?page=${page}&size=${pageSize}&sortBy=id&sortAs=ASC`);
         const list = Array.isArray(batch) ? batch : [];
         customers.push(...list);
-        if (list.length < pageSize) break;
+
+        if (list.length < pageSize) {
+            break;
+        }
     }
+
     return customers;
 }
 
@@ -246,19 +269,21 @@ async function login(username, password) {
             let rawToken = await response.text();
             token = rawToken.replace(/^"|"$/g, '').trim();
             if (token === "User Verification Unsuccessful" || token.includes("Unsuccessful") || token === "Fail") {
-                showToast('Authentication failed. Please verify your credentials.', 'Access Denied', 'error');
+                showToast('Invalid credentials', 'Login Failed', 'error');
                 return;
             }
             currentUsername = username.trim();
             localStorage.setItem('jwt_token', token);
             localStorage.setItem('username', currentUsername);
-            showToast('Authentication successful.', 'Welcome to StayEase', 'success');
+            showToast('Logged in successfully', 'Welcome', 'success');
             checkAuthState();
         } else {
-            showToast('Authentication failed. Please verify your credentials.', 'Access Denied', 'error');
+            let errorData = {};
+            try { errorData = await response.json(); } catch(e){}
+            showToast(errorData.message || 'Invalid credentials', 'Login Failed', 'error');
         }
     } catch (e) {
-        showToast('Unable to connect to the authentication server.', 'System Notice', 'error');
+        showToast('Server connection failed', 'Error', 'error');
     }
 }
 
@@ -271,15 +296,17 @@ async function register(username, password) {
         });
 
         if (response.ok) {
-            showToast('Account creation successful. You may now log in.', 'System Notice', 'success');
+            showToast('Account created successfully. Please login.', 'Success', 'success');
             document.querySelector('.tab-btn[data-target="login-form"]').click();
             document.getElementById('login-username').value = username.trim();
             document.getElementById('login-password').value = '';
         } else {
-            showToast('Unable to complete account registration at this time.', 'Registration Issue', 'error');
+            let errorData = {};
+            try { errorData = await response.json(); } catch(e){}
+            showToast(errorData.message || 'Registration failed', 'Error', 'error');
         }
     } catch (e) {
-        showToast('Unable to connect to the registration server.', 'System Notice', 'error');
+        showToast('Server connection failed', 'Error', 'error');
     }
 }
 
@@ -291,9 +318,11 @@ function logout() {
     checkAuthState();
 }
 
+// --- Room Management ---
+
 async function loadRooms() {
     try {
-        setRoomSyncStatus('Synchronizing room status...');
+        setRoomSyncStatus('Loading room status from the backend...');
 
         const [reservedResult, unreservedResult, customersResult] = await Promise.allSettled([
             fetchWithAuth('/rooms?status=RESERVED'),
@@ -308,7 +337,9 @@ async function loadRooms() {
 
         lookupCustomers.forEach(customer => {
             const roomNo = Number(customer.roomNo);
-            if (!Number.isNaN(roomNo) && roomNo > 0) occupancyMap.set(roomNo, (occupancyMap.get(roomNo) || 0) + 1);
+            if (!Number.isNaN(roomNo) && roomNo > 0) {
+                occupancyMap.set(roomNo, (occupancyMap.get(roomNo) || 0) + 1);
+            }
         });
 
         roomsList = [...reservedRooms, ...unreservedRooms].map(room => ({
@@ -326,26 +357,37 @@ async function loadRooms() {
         roomAvailabilityLoaded = true;
         roomOccupancyLoaded = customersResult.status === 'fulfilled';
         renderRoomsTable();
-
         if (document.getElementById('cust-room-no')?.value) {
             updateCustomerRoomAvailability(document.getElementById('cust-room-no').value);
         }
-        setRoomSyncStatus('Synchronization complete.', 'success');
+
+        if (reservedResult.status === 'rejected' || unreservedResult.status === 'rejected') {
+            setRoomSyncStatus('Some room data could not be loaded from the backend.', 'warning');
+        } else if (!roomOccupancyLoaded) {
+            setRoomSyncStatus('Room list loaded, but bed counts could not be calculated right now.', 'warning');
+        } else {
+            setRoomSyncStatus('Room status loaded from the backend.', 'success');
+        }
     } catch (e) {
         roomAvailabilityLoaded = false;
         roomOccupancyLoaded = false;
-        setRoomSyncStatus('System was unable to synchronize room status.', 'danger');
+        setRoomSyncStatus('Room status could not be loaded.', 'danger');
     }
 }
 
 function renderRoomsTable() {
     const tbody = document.getElementById('rooms-tbody');
-    if (!tbody) return;
+    if (!tbody) {
+        return;
+    }
 
     const searchTerm = roomSearch.trim().toLowerCase();
     const filteredRooms = roomsList
         .filter(room => roomFilter === 'ALL' || (room.calculatedStatus || room.roomStatus) === roomFilter)
-        .filter(room => !searchTerm ? true : String(room.roomNo).includes(searchTerm))
+        .filter(room => {
+            if (!searchTerm) return true;
+            return String(room.roomNo).includes(searchTerm);
+        })
         .sort((a, b) => Number(a.roomNo) - Number(b.roomNo));
 
     tbody.innerHTML = '';
@@ -368,10 +410,13 @@ function renderRoomsTable() {
 
 function updateCustomerRoomAvailability(roomNo) {
     const hint = document.getElementById('cust-room-status-hint');
-    if (!hint) return;
+    if (!hint) {
+        return;
+    }
+
     if (!roomNo) {
         customerRoomIsAllocated = false;
-        hint.textContent = 'Please provide a room number.';
+        hint.textContent = 'Enter a room number to check availability.';
         hint.className = 'field-hint';
         return;
     }
@@ -383,20 +428,29 @@ function updateCustomerRoomAvailability(roomNo) {
 
     if (!matchingRoom) {
         customerRoomIsAllocated = false;
-        hint.textContent = roomAvailabilityLoaded ? 'Room not found in registry.' : 'Verifying room status...';
+        hint.textContent = roomAvailabilityLoaded
+            ? 'Room not found. Add it in Rooms first.'
+            : 'Room status will be checked when you save.';
+        hint.className = 'field-hint warning';
+        return;
+    }
+
+    if (!roomOccupancyLoaded) {
+        customerRoomIsAllocated = false;
+        hint.textContent = 'Checking room availability...';
         hint.className = 'field-hint warning';
         return;
     }
 
     if (availableBeds > 0 || (matchingRoom.calculatedStatus || matchingRoom.roomStatus) === 'UNRESERVED' || isSameRoomAsOriginal) {
         customerRoomIsAllocated = false;
-        hint.textContent = isSameRoomAsOriginal && availableBeds === 0 ? 'Current assigned room.' : 'Room verified as available.';
+        hint.textContent = isSameRoomAsOriginal && availableBeds === 0 ? 'Current room selected' : 'Room available';
         hint.className = isSameRoomAsOriginal && availableBeds === 0 ? 'field-hint warning' : 'field-hint success';
         return;
     }
 
     customerRoomIsAllocated = true;
-    hint.textContent = 'Room allocation is full.';
+    hint.textContent = 'Room unreserved';
     hint.className = 'field-hint danger';
 }
 
@@ -406,12 +460,16 @@ async function saveRoom(roomData) {
             method: 'POST',
             body: JSON.stringify(roomData)
         });
-        showToast('Room profile successfully cataloged.', 'System Notice', 'success');
+        showToast('Room saved successfully', 'Success', 'success');
         closeModal('room-modal');
         document.getElementById('room-form').reset();
         loadRooms();
-    } catch (e) { }
+    } catch (e) {
+        // handled
+    }
 }
+
+// --- Customer Management ---
 
 async function loadCustomers() {
     try {
@@ -421,19 +479,23 @@ async function loadCustomers() {
         } else {
             data = await fetchWithAuth(`/customers?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&sortAs=${sortAs}`);
         }
+
         customersList = data || [];
         renderCustomersTable();
         document.getElementById('page-indicator').innerText = `Page ${currentPage + 1}`;
         document.getElementById('prev-page').disabled = currentPage === 0;
         document.getElementById('next-page').disabled = customersList.length < pageSize;
-    } catch (e) { }
+
+    } catch (e) {
+        // Error handled in fetchWithAuth
+    }
 }
 
 async function deleteCustomer(id) {
-    if(confirm('Are you certain you wish to proceed with removing this customer profile?')) {
+    if(confirm('Are you sure you want to delete this customer?')) {
         try {
             await fetchWithAuth(`/customers/${id}`, { method: 'DELETE' });
-            showToast('Customer profile removed.', 'System Notice', 'success');
+            showToast('Customer deleted', 'Success', 'success');
             loadCustomers();
         } catch (e) { }
     }
@@ -445,7 +507,7 @@ function openCustomerModal(id) {
 
     customerRoomOriginalValue = cust.roomNo ?? null;
     document.getElementById('customer-id').value = cust.id;
-    document.getElementById('customer-modal-title').innerText = 'Modify Customer Profile';
+    document.getElementById('customer-modal-title').innerText = 'Edit Customer';
 
     document.getElementById('cust-name').value = cust.name || '';
     document.getElementById('cust-phone').value = cust.phoneNo || '';
@@ -486,16 +548,21 @@ function openMessageModal(id) {
 
 function openCustomerInfoModal(id) {
     const cust = customersList.find(c => c.id === id);
-    if (!cust) return;
+    if (!cust) {
+        return;
+    }
 
     const room = roomsList.find(item => Number(item.roomNo) === Number(cust.roomNo));
+    const availableBeds = room ? getRoomAvailableBeds(room) : 0;
     const roomStatusText = room
         ? ((room.calculatedStatus || room.roomStatus) === 'UNRESERVED' ? 'Available' : 'Unreserved')
-        : 'Status unknown';
+        : 'Not found';
 
     const setText = (idName, value) => {
         const element = document.getElementById(idName);
-        if (element) element.textContent = value ?? '-';
+        if (element) {
+            element.textContent = value ?? '-';
+        }
     };
 
     setText('info-customer-name', cust.name || '-');
@@ -517,11 +584,11 @@ function openCustomerInfoModal(id) {
         accessoriesList.innerHTML = accessories.length
             ? accessories.map(acc => `
                 <div class="detail-item detail-full">
-                    <span class="detail-label">${acc.accessoriesName || 'Accessory Component'}</span>
+                    <span class="detail-label">${acc.accessoriesName || 'Accessory'}</span>
                     <strong class="detail-value">${acc.accessoriesPrice ?? '-'}</strong>
                 </div>
             `).join('')
-            : '<div class="empty-state">No recorded accessory components.</div>';
+            : '<div class="empty-state">No rented accessories.</div>';
     }
 
     document.getElementById('customer-info-modal').classList.add('active');
@@ -565,12 +632,12 @@ function renderCustomersTable() {
             <td><input type="number" class="inline-edit" data-id="${cust.id}" data-field="rentFee" value="${cust.rentFee || 0}"></td>
             <td>
                 <div class="actions-menu">
-                    <button class="action-btn action-trigger" type="button" aria-label="Action Options">&#8942;</button>
+                    <button class="action-btn action-trigger" type="button" aria-label="Open actions">&#8942;</button>
                     <div class="actions-dropdown">
-                        <button type="button" class="dropdown-item" onclick="openCustomerModal(${cust.id})">Modify</button>
-                        <button type="button" class="dropdown-item" onclick="openCustomerInfoModal(${cust.id})">Review</button>
-                        <button type="button" class="dropdown-item" onclick="openMessageModal(${cust.id})">Notify</button>
-                        <button type="button" class="dropdown-item danger" onclick="deleteCustomer(${cust.id})">Remove</button>
+                        <button type="button" class="dropdown-item" onclick="openCustomerModal(${cust.id})">Edit</button>
+                        <button type="button" class="dropdown-item" onclick="openCustomerInfoModal(${cust.id})">Info</button>
+                        <button type="button" class="dropdown-item" onclick="openMessageModal(${cust.id})">Message</button>
+                        <button type="button" class="dropdown-item danger" onclick="deleteCustomer(${cust.id})">Delete</button>
                     </div>
                 </div>
             </td>
@@ -585,7 +652,9 @@ function renderCustomersTable() {
             event.stopPropagation();
             const menu = event.currentTarget.closest('.actions-menu');
             document.querySelectorAll('.actions-menu.open').forEach(openMenu => {
-                if (openMenu !== menu) openMenu.classList.remove('open');
+                if (openMenu !== menu) {
+                    openMenu.classList.remove('open');
+                }
             });
             menu.classList.toggle('open');
         });
@@ -599,11 +668,15 @@ async function saveCustomer(formData) {
 
     try {
         if (!roomAvailabilityLoaded) {
-            try { await loadRooms(); } catch (error) { }
+            try {
+                await loadRooms();
+            } catch (error) {
+                // If room lookup fails, let the backend perform the final validation.
+            }
         }
 
         if (customerRoomIsAllocated) {
-            showToast('The requested room is at capacity.', 'Allocation Notice', 'error');
+            showToast('Room allocated', 'Room Error', 'error');
             return;
         }
 
@@ -611,53 +684,22 @@ async function saveCustomer(formData) {
             method,
             body: JSON.stringify(formData)
         });
-        showToast('Customer profile processed successfully.', 'System Notice', 'success');
+        showToast('Customer saved successfully', 'Success', 'success');
         closeModal('customer-modal');
         loadCustomers();
-    } catch (e) { }
+    } catch (e) {
+        // handled
+    }
 }
 
 function setupEventListeners() {
-    // UI Event listeners
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+
             e.target.classList.add('active');
             document.getElementById(e.target.getAttribute('data-target')).classList.add('active');
-        });
-    });
-
-    // Handle Mobile Menu
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-
-    mobileMenuBtn?.addEventListener('click', () => {
-        sidebar.classList.add('active');
-    });
-
-    closeSidebarBtn?.addEventListener('click', () => {
-        sidebar.classList.remove('active');
-    });
-
-    // Close sidebar on mobile when a link is clicked
-    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            document.querySelectorAll('.sidebar-nav .nav-item').forEach(nav => nav.classList.remove('active'));
-            document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
-
-            e.currentTarget.classList.add('active');
-            const targetPage = e.currentTarget.getAttribute('data-page');
-            document.getElementById(targetPage).classList.add('active');
-            document.getElementById('page-title').innerText = getPageTitle(targetPage);
-
-            if (targetPage === 'rooms-page') loadRooms();
-
-            // Auto-close on mobile
-            if(window.innerWidth <= 768) {
-                sidebar.classList.remove('active');
-            }
         });
     });
 
@@ -673,6 +715,22 @@ function setupEventListeners() {
 
     document.getElementById('logout-btn').addEventListener('click', logout);
 
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            document.querySelectorAll('.sidebar-nav .nav-item').forEach(nav => nav.classList.remove('active'));
+            document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+
+            e.currentTarget.classList.add('active');
+            const targetPage = e.currentTarget.getAttribute('data-page');
+            document.getElementById(targetPage).classList.add('active');
+
+            document.getElementById('page-title').innerText = getPageTitle(targetPage);
+            if (targetPage === 'rooms-page') {
+                loadRooms();
+            }
+        });
+    });
+
     let searchTimeout;
     document.getElementById('search-input').addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
@@ -683,15 +741,32 @@ function setupEventListeners() {
         }, 500);
     });
 
-    document.getElementById('sort-by-select').addEventListener('change', (e) => { sortBy = e.target.value; loadCustomers(); });
-    document.getElementById('sort-as-select').addEventListener('change', (e) => { sortAs = e.target.value; loadCustomers(); });
-    document.getElementById('prev-page').addEventListener('click', () => { if (currentPage > 0) { currentPage--; loadCustomers(); } });
-    document.getElementById('next-page').addEventListener('click', () => { currentPage++; loadCustomers(); });
+    document.getElementById('sort-by-select').addEventListener('change', (e) => {
+        sortBy = e.target.value;
+        loadCustomers();
+    });
+
+    document.getElementById('sort-as-select').addEventListener('change', (e) => {
+        sortAs = e.target.value;
+        loadCustomers();
+    });
+
+    document.getElementById('prev-page').addEventListener('click', () => {
+        if (currentPage > 0) {
+            currentPage--;
+            loadCustomers();
+        }
+    });
+
+    document.getElementById('next-page').addEventListener('click', () => {
+        currentPage++;
+        loadCustomers();
+    });
 
     document.getElementById('update-pending-btn').addEventListener('click', async () => {
         try {
             await fetchWithAuth('/customers/rent-pending');
-            showToast('Pending status designations synchronized.', 'System Notice', 'success');
+            showToast('Pending status updated', 'Success', 'success');
             loadCustomers();
         } catch (e) { }
     });
@@ -699,29 +774,33 @@ function setupEventListeners() {
     document.getElementById('trigger-alert-btn').addEventListener('click', async () => {
         try {
             await fetchWithAuth(`/alert/${alertDaysSetting}`);
-            showToast(`System communications dispatched for pending dates (${alertDaysSetting} day window).`, 'Notice', 'success');
+            showToast(`Alerts sent for ${alertDaysSetting} days before`, 'Success', 'success');
         } catch (e) { }
     });
 
     document.getElementById('message-all-btn').addEventListener('click', async () => {
-        const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => Number(cb.getAttribute('data-id')));
+        const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked'))
+            .map(cb => Number(cb.getAttribute('data-id')));
         const selectedCustomers = customersList.filter(customer => selectedIds.includes(Number(customer.id)));
 
         if (selectedCustomers.length === 0) {
-            showToast('Kindly select an associated profile prior to sending an alert.', 'Input Notice', 'warning');
+            showToast('Please select at least one customer', 'Warning', 'warning');
             return;
         }
 
         try {
-            const result = await fetchWithAuth('/customers/alert', { method: 'POST', body: JSON.stringify(selectedCustomers) });
-            showToast(`System communications logged for ${Array.isArray(result) ? result.length : selectedCustomers.length} profiles.`, 'Notice', 'success');
+            const result = await fetchWithAuth('/customers/alert', {
+                method: 'POST',
+                body: JSON.stringify(selectedCustomers)
+            });
+            showToast(`Messages sent to ${Array.isArray(result) ? result.length : selectedCustomers.length} customers`, 'Success', 'success');
         } catch (e) { }
     });
 
     document.getElementById('add-customer-btn').addEventListener('click', () => {
         document.getElementById('customer-form').reset();
         document.getElementById('customer-id').value = '';
-        document.getElementById('customer-modal-title').innerText = 'Establish Customer Profile';
+        document.getElementById('customer-modal-title').innerText = 'Add Customer';
         document.getElementById('accessories-list').innerHTML = '';
         customerRoomOriginalValue = null;
         customerRoomIsAllocated = false;
@@ -731,17 +810,26 @@ function setupEventListeners() {
     });
 
     document.getElementById('add-room-btn').addEventListener('click', openRoomModal);
+
     document.getElementById('refresh-rooms-btn').addEventListener('click', loadRooms);
-    document.getElementById('room-search-input').addEventListener('input', (e) => { roomSearch = e.target.value; renderRoomsTable(); });
-    document.getElementById('room-status-select').addEventListener('change', (e) => { roomFilter = e.target.value; renderRoomsTable(); });
+
+    document.getElementById('room-search-input').addEventListener('input', (e) => {
+        roomSearch = e.target.value;
+        renderRoomsTable();
+    });
+
+    document.getElementById('room-status-select').addEventListener('change', (e) => {
+        roomFilter = e.target.value;
+        renderRoomsTable();
+    });
 
     document.getElementById('add-accessory-btn').addEventListener('click', () => {
         const list = document.getElementById('accessories-list');
         const div = document.createElement('div');
         div.className = 'accessory-item';
         div.innerHTML = `
-            <input type="text" placeholder="Designation" class="acc-name" required>
-            <input type="number" step="0.01" placeholder="Valuation" class="acc-price" required>
+            <input type="text" placeholder="Name" class="acc-name" required>
+            <input type="number" step="0.01" placeholder="Price" class="acc-price" required>
             <button type="button" class="remove-acc-btn" onclick="this.parentElement.remove()">x</button>
         `;
         list.appendChild(div);
@@ -757,6 +845,7 @@ function setupEventListeners() {
 
     document.getElementById('customer-form').addEventListener('submit', (e) => {
         e.preventDefault();
+
         const accessories = Array.from(document.querySelectorAll('.accessory-item')).map(item => ({
             accessoriesName: item.querySelector('.acc-name').value,
             accessoriesPrice: parseFloat(item.querySelector('.acc-price').value)
@@ -785,11 +874,13 @@ function setupEventListeners() {
 
     document.getElementById('room-form').addEventListener('submit', (e) => {
         e.preventDefault();
+
         const roomData = {
             roomNo: parseInt(document.getElementById('room-no').value, 10),
             noOfBed: parseInt(document.getElementById('room-bed-count').value, 10),
             roomStatus: document.getElementById('room-status').value
         };
+
         saveRoom(roomData);
     });
 
@@ -803,7 +894,7 @@ function setupEventListeners() {
                 method: 'POST',
                 body: JSON.stringify({ message: content, status: 'SENT' })
             });
-            showToast('System message dispatched.', 'System Notice', 'success');
+            showToast('Message sent successfully', 'Success', 'success');
             closeModal('message-modal');
         } catch (err) { }
     });
@@ -812,12 +903,12 @@ function setupEventListeners() {
         e.preventDefault();
         alertDaysSetting = document.getElementById('alert-days').value;
         localStorage.setItem('alertDays', alertDaysSetting);
-        showToast('System configuration saved successfully.', 'System Notice', 'success');
+        showToast('Settings saved', 'Success', 'success');
     });
 
     document.getElementById('change-password-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        showToast('Credential parameters have been updated (Mocked)', 'System Notice', 'success');
+        showToast('Password changed successfully (Mocked)', 'Success', 'success');
         document.getElementById('change-password-form').reset();
     });
 
