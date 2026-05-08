@@ -33,15 +33,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- Utility Functions ---
-function setButtonState(btn, isProcessing, text = 'Processing...') {
+
+// Dims the button via CSS pseudo-class and disables interactions
+function setButtonState(btn, isProcessing) {
     if (!btn) return;
-    if (isProcessing) {
-        btn.dataset.originalText = btn.innerHTML;
-        btn.innerHTML = text;
-        btn.disabled = true;
-    } else {
-        btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
-        btn.disabled = false;
+    btn.disabled = isProcessing;
+}
+
+// Freezes and unfreezes the screen
+function toggleScreenFreeze(isProcessing) {
+    const loader = document.getElementById('global-loader');
+    if (loader) {
+        if (isProcessing) loader.classList.add('active');
+        else loader.classList.remove('active');
     }
 }
 
@@ -653,17 +657,27 @@ function setupEventListeners() {
     document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Signing In...');
+
+        setButtonState(btn, true);
+        toggleScreenFreeze(true);
+
         await login(document.getElementById('login-username').value, document.getElementById('login-password').value);
+
         setButtonState(btn, false);
+        toggleScreenFreeze(false);
     });
 
     document.getElementById('register-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Registering...');
+
+        setButtonState(btn, true);
+        toggleScreenFreeze(true);
+
         await register(document.getElementById('reg-username').value, document.getElementById('reg-password').value);
+
         setButtonState(btn, false);
+        toggleScreenFreeze(false);
     });
 
     document.getElementById('logout-btn').addEventListener('click', logout);
@@ -702,7 +716,7 @@ function setupEventListeners() {
 
     document.getElementById('update-pending-btn').addEventListener('click', async (e) => {
         const btn = e.target;
-        setButtonState(btn, true, 'Updating...');
+        setButtonState(btn, true);
         try {
             await fetchWithAuth('/customers/rent-pending');
             showToast('Process completed successfully.', 'Success', 'success');
@@ -713,7 +727,7 @@ function setupEventListeners() {
 
     document.getElementById('trigger-alert-btn').addEventListener('click', async (e) => {
         const btn = e.target;
-        setButtonState(btn, true, 'Processing...');
+        setButtonState(btn, true);
         try {
             await fetchWithAuth(`/alert/${alertDaysSetting}`);
             showToast('Process completed successfully.', 'Success', 'success');
@@ -731,7 +745,7 @@ function setupEventListeners() {
             return;
         }
 
-        setButtonState(btn, true, 'Sending...');
+        setButtonState(btn, true);
         try {
             await fetchWithAuth('/customers/alert', { method: 'POST', body: JSON.stringify(selectedCustomers) });
             showToast('Process completed successfully.', 'Success', 'success');
@@ -755,7 +769,7 @@ function setupEventListeners() {
 
     document.getElementById('refresh-rooms-btn').addEventListener('click', async (e) => {
         const btn = e.target;
-        setButtonState(btn, true, 'Refreshing...');
+        setButtonState(btn, true);
         await loadRooms();
         setButtonState(btn, false);
     });
@@ -786,7 +800,7 @@ function setupEventListeners() {
     document.getElementById('customer-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Saving...');
+        setButtonState(btn, true);
 
         const accessories = Array.from(document.querySelectorAll('.accessory-item')).map(item => ({
             accessoriesName: item.querySelector('.acc-name').value,
@@ -818,7 +832,7 @@ function setupEventListeners() {
     document.getElementById('room-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Saving...');
+        setButtonState(btn, true);
 
         const roomData = {
             roomNo: parseInt(document.getElementById('room-no').value, 10),
@@ -833,7 +847,7 @@ function setupEventListeners() {
     document.getElementById('message-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Sending...');
+        setButtonState(btn, true);
 
         const customerId = document.getElementById('message-customer-id').value;
         const content = document.getElementById('msg-content').value;
@@ -852,7 +866,7 @@ function setupEventListeners() {
     document.getElementById('system-settings-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Saving...');
+        setButtonState(btn, true);
         alertDaysSetting = document.getElementById('alert-days').value;
         localStorage.setItem('alertDays', alertDaysSetting);
         showToast('Settings successfully updated.', 'Success', 'success');
@@ -862,7 +876,7 @@ function setupEventListeners() {
     document.getElementById('change-password-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
-        setButtonState(btn, true, 'Updating...');
+        setButtonState(btn, true);
         showToast('Process completed successfully.', 'Success', 'success');
         document.getElementById('change-password-form').reset();
         setTimeout(() => setButtonState(btn, false), 500); // UI feedback
