@@ -801,83 +801,6 @@ tr:hover {
     background: rgba(15, 23, 42, 0.8);
 }
 
-/* Mobile Responsive Adjustments */
-@media (max-width: 768px) {
-    .menu-toggle { display: block; }
-
-    .sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-    }
-
-    .sidebar.mobile-open {
-        transform: translateX(0);
-    }
-
-    .sidebar-overlay.active {
-        display: block;
-    }
-
-    .main-content {
-        margin-left: 0;
-    }
-
-    .top-header {
-        justify-content: flex-start;
-        gap: 1rem;
-        padding: 0 1rem;
-    }
-
-    #page-title {
-        flex-grow: 1;
-    }
-
-    .page-content {
-        padding: 1rem;
-    }
-
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .room-summary-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .toolbar {
-        align-items: stretch;
-    }
-
-    .search-sort-group, .action-group {
-        flex-direction: column;
-        width: 100%;
-    }
-
-    .search-box input, .custom-select, .btn {
-        width: 100%;
-    }
-
-    .actions-dropdown {
-        left: auto;
-        right: 0;
-    }
-
-    .toast-container {
-        right: 1rem;
-        bottom: 1rem;
-        left: 1rem;
-        max-width: none;
-    }
-
-    .toast {
-        min-width: 100%;
-    }
-
-    .settings-container {
-        padding: 1rem 0;
-    }
-}
-
 /* Global Screen Freeze Overlay */
 .global-loader {
     position: fixed;
@@ -915,4 +838,137 @@ tr:hover {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   Mobile Responsive Adjustments - REWRITTEN FOR NEATNESS
+   ========================================================= */
+@media (max-width: 768px) {
+    .menu-toggle { display: block; }
+
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    /* Header Adjustments */
+    .top-header {
+        justify-content: flex-start;
+        gap: 1rem;
+        padding: 0 1rem;
+        height: 65px;
+    }
+
+    #page-title {
+        flex-grow: 1;
+        font-size: 1.25rem;
+    }
+
+    #current-user-name {
+        display: none; /* Hide text username to save space on mobile */
+    }
+
+    .page-content {
+        padding: 1rem;
+    }
+
+    /* Grids & Forms */
+    .form-grid, .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .room-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .toolbar {
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .search-sort-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    /* Neat 2x2 grid for action buttons instead of stacking all 4 vertically */
+    .action-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    .search-box input, .custom-select, .btn {
+        width: 100%;
+    }
+
+    /* Tighter padding on table cells so more data fits */
+    th, td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .inline-edit {
+        min-width: 80px;
+    }
+
+    .actions-dropdown {
+        left: auto;
+        right: 0;
+    }
+
+    /* Modals & Popups Margin Fixes */
+    .modal {
+        margin: 1rem;
+        width: calc(100% - 2rem);
+    }
+
+    .modal-header, .modal-body {
+        padding: 1.25rem;
+    }
+
+    .modal-actions {
+        flex-direction: column-reverse; /* Stack buttons logically */
+        gap: 0.5rem;
+    }
+
+    .modal-actions .btn {
+        margin: 0;
+    }
+
+    .auth-box {
+        margin: 1rem;
+        padding: 2rem 1.5rem;
+    }
+
+    .toast-container {
+        right: 1rem;
+        bottom: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+
+    .toast {
+        min-width: 100%;
+    }
+
+    .settings-container {
+        padding: 1rem 0;
+    }
 }
